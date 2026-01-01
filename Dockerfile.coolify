@@ -1,0 +1,65 @@
+# Étape 1 : Construction
+FROM node:22-bookworm-slim AS build
+
+WORKDIR /app
+
+# Désactiver Husky et activer le mode CI
+ENV HUSKY=0
+ENV CI=true
+
+# Installation de pnpm et des dépendances système nécessaires
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copie des fichiers de dépendances
+COPY package.json pnpm-lock.yaml* ./
+
+# Installation des dépendances
+RUN pnpm install --frozen-lockfile
+
+# Copie du reste du code source
+COPY . .
+
+# Construction de l'application Remix
+RUN NODE_OPTIONS=--max-old-space-size=4096 pnpm run build
+
+# Étape 2 : Production
+FROM node:22-bookworm-slim AS production
+
+WORKDIR /app
+
+# Variables d'environnement pour la production
+ENV NODE_ENV=production
+ENV PORT=5173
+ENV HOST=0.0.0.0
+ENV RUNNING_IN_DOCKER=true
+
+# Installation de curl pour les healthchecks et git pour le runtime
+RUN apt-get update && apt-get install -y --no-install-recommends curl git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copie des fichiers nécessaires depuis l'étape de build
+COPY --from=build /app/build /app/build
+COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /app/package.json /app/package.json
+COPY --from=build /app/bindings.sh /app/bindings.sh
+COPY --from=build /app/worker-configuration.d.ts /app/worker-configuration.d.ts
+
+# Configuration de Wrangler pour désactiver les métriques
+RUN mkdir -p /root/.config/.wrangler && \
+    echo '{"enabled":false}' > /root/.config/.wrangler/metrics.json
+
+# Rendre le script de bindings exécutable
+RUN chmod +x /app/bindings.sh
+
+# Exposition du port
+EXPOSE 5173
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -fsS http://localhost:5173/ || exit 1
+
+# Commande de démarrage
+# On utilise directement le script qui génère les bindings et lance wrangler
+CMD ["sh", "-c", "bindings=$(./bindings.sh) && pnpm wrangler pages dev ./build/client $bindings --ip 0.0.0.0 --port 5173 --no-show-interactive-dev-session"]
