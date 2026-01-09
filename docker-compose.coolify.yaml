@@ -1,32 +1,28 @@
+version: "3.9"
 services:
-  bolt-diy:
+  app:
     build:
       context: .
-      dockerfile: Dockerfile.coolify
-    container_name: bolt-diy
+      dockerfile: Dockerfile
+      target: runtime
     ports:
-      - "5173:5173"
+      - "3000:3000"
     environment:
       - NODE_ENV=production
-      - PORT=5173
-      - HOST=0.0.0.0
-      # Ajoutez vos clés API ici ou via l'interface Coolify
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - GROQ_API_KEY=${GROQ_API_KEY:-}
-      - OPEN_ROUTER_API_KEY=${OPEN_ROUTER_API_KEY:-}
-      - GOOGLE_GENERATIVE_AI_API_KEY=${GOOGLE_GENERATIVE_AI_API_KEY:-}
-      - OLLAMA_API_BASE_URL=${OLLAMA_API_BASE_URL:-http://host.docker.internal:11434}
-      - XAI_API_KEY=${XAI_API_KEY:-}
-      - TOGETHER_API_KEY=${TOGETHER_API_KEY:-}
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
-      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: always
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5173/"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      - PORT=3000
+      - VITE_PUBLIC_APP_URL=${VITE_PUBLIC_APP_URL:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:?}
+      - HuggingFace_API_KEY=${HuggingFace_API_KEY:?}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:?}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:?}
+      - OPEN_ROUTER_API_KEY=${OPEN_ROUTER_API_KEY:?}
+      - GOOGLE_GENERATIVE_AI_API_KEY=${GOOGLE_GENERATIVE_AI_API_KEY:?}
+      - OLLAMA_API_BASE_URL=${OLLAMA_API_BASE_URL:?}
+      - XAI_API_KEY=${XAI_API_KEY:?}
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY:?}
+      - TOGETHER_API_BASE_URL=${TOGETHER_API_BASE_URL:?}
+      - AWS_BEDROCK_CONFIG=${AWS_BEDROCK_CONFIG:?}
+      - VITE_LOG_LEVEL=${VITE_LOG_LEVEL:?info}
+      - DEFAULT_NUM_CTX=${DEFAULT_NUM_CTX:?}
+    profiles:
+      - production
